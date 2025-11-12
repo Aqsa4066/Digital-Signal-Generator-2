@@ -1,0 +1,240 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
+def nrzl(bits):
+    return [1 if b == '1' else -1 for b in bits]
+
+def nrzi(bits):
+    levels = []
+    last = -1
+    for b in bits:
+        if b == '1':
+            last = -last
+        levels.append(last)
+    return levels
+
+def manchester(bits):
+    levels = []
+    for b in bits:
+        if b == '1':
+            levels += [1, -1]
+        else:
+            levels += [-1, 1]
+    return levels
+
+def diff_manchester(bits):
+    levels = []
+    last = 1
+    for b in bits:
+        if b == '0':
+            last = -last
+        levels += [last, -last]
+        last = last
+    return levels
+
+def ami(bits):
+    levels = []
+    last = -1
+    for b in bits:
+        if b == '1':
+            last = -last
+            levels.append(last)
+        else:
+            levels.append(0)
+    return levels
+
+def b8zs(bits):
+    levels = []
+    last = -1
+    zero_count = 0
+
+    i = 0
+    while i < len(bits):
+        b = bits[i]
+        if b == '1':
+            last = -last
+            levels.append(last)
+            zero_count = 0
+        else:
+            zero_count += 1
+            if zero_count == 8:
+                for _ in range(7):
+                    levels.pop()
+                V = last
+                B = -last
+                pattern = [0, 0, 0, V, B, 0, V, B]
+                levels.extend(pattern)
+                zero_count = 0
+            else:
+                levels.append(0)
+        i += 1
+    return levels
+
+def hdb3(bits):
+    encoded = []
+    last = -1
+    count_ones = 0
+    i = 0
+
+    while i < len(bits):
+        if bits[i:i+4] == '0000':
+            if count_ones % 2 == 0:
+                last = -last
+                encoded += [last, 0, 0, last]
+            else:
+                encoded += [0, 0, 0, -last]
+            count_ones = 0
+            i += 4
+        else:
+            if bits[i] == '1':
+                last = -last
+                encoded.append(last)
+                count_ones += 1
+            else:
+                encoded.append(0)
+            i += 1
+    return encoded
+
+def pcm_encode(samples, bits=4):
+    L = 1 << bits  
+    bitstream = ""
+    for s in samples:
+        level = int(round((s + 1) / 2 * (L - 1)))
+        b = format(level, f'0{bits}b')
+        bitstream += b
+    return bitstream
+
+
+def delta_modulation(samples, step=0.2):
+    bits = ""
+    approx = 0
+    for s in samples:
+        if s >= approx:
+            bits += '1'
+            approx += step
+        else:
+            bits += '0'
+            approx -= step
+    return bits
+
+
+def plot_waveform(bits, levels, title, samples_per_bit=2):
+    t = np.arange(0, len(levels), 1) / samples_per_bit
+    plt.figure(figsize=(10, 3))
+    plt.step(t, levels, where='post', linewidth=2)
+    plt.ylim(-1.5, 1.5)
+    plt.yticks([-1, 0, 1])
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.title(title)
+    plt.xlabel('Time')
+    plt.ylabel('Amplitude')
+
+    for i, b in enumerate(bits):
+        plt.text(i + 0.3, 1.2, b, fontsize=12, color='blue')
+    plt.show()
+
+
+if __name__ == "__main__":
+    print("Digital Signal Visualizer")
+    print("1. Digital Input")
+    print("2. Analog Input")
+    choice = int(input("Enter choice: "))
+
+    if choice == 1:
+        bits = input("Enter bitstream (0s and 1s): ")
+
+        print("\nSelect encoding scheme:")
+        print("1. NRZ-L\n2. NRZ-I\n3. Manchester\n4. Differential Manchester\n5. AMI (with optional scrambling)")
+        enc = int(input("Enter choice: "))
+
+        if enc == 1:
+            levels = nrzl(bits)
+            title = "NRZ-L Encoding"
+            samples = 1
+        elif enc == 2:
+            levels = nrzi(bits)
+            title = "NRZ-I Encoding"
+            samples = 1
+        elif enc == 3:
+            levels = manchester(bits)
+            title = "Manchester Encoding"
+            samples = 2
+        elif enc == 4:
+            levels = diff_manchester(bits)
+            title = "Differential Manchester Encoding"
+            samples = 2
+        elif enc == 5:
+            print("\nApply scrambling?")
+            print("1. No scrambling\n2. B8ZS\n3. HDB3")
+            s = int(input("Enter choice: "))
+            if s == 1:
+                levels = ami(bits)
+                title = "AMI Encoding"
+            elif s == 2:
+                levels = b8zs(bits)
+                title = "AMI with B8ZS Scrambling"
+            elif s == 3:
+                levels = hdb3(bits)
+                title = "AMI with HDB3 Scrambling"
+            samples = 1
+        else:
+            print("Invalid choice.")
+            exit()
+
+        plot_waveform(bits, levels, title, samples)
+
+    elif choice == 2:
+        n = int(input("Enter number of samples: "))
+        samples = []
+        print("Enter analog samples (values between -1 and +1):")
+        for i in range(n):
+            samples.append(float(input(f"Sample {i+1}: ")))
+
+        print("\nSelect Modulation:")
+        print("1. PCM\n2. Delta Modulation")
+        mod = int(input("Enter choice: "))
+
+        if mod == 1:
+            bitstream = pcm_encode(samples)
+            title = "PCM Bitstream"
+        elif mod == 2:
+            bitstream = delta_modulation(samples)
+            title = "Delta Modulation Bitstream"
+        else:
+            print("Invalid choice.")
+            exit()
+
+        print(f"\nGenerated Digital Bitstream:\n{bitstream}\n")
+
+        print("Now choose line encoding for generated bitstream:")
+        print("1. NRZ-L\n2. NRZ-I\n3. Manchester\n4. Differential Manchester\n5. AMI")
+        enc = int(input("Enter choice: "))
+
+        if enc == 1:
+            levels = nrzl(bitstream)
+            scheme = "NRZ-L"
+            samples_per_bit = 1
+        elif enc == 2:
+            levels = nrzi(bitstream)
+            scheme = "NRZ-I"
+            samples_per_bit = 1
+        elif enc == 3:
+            levels = manchester(bitstream)
+            scheme = "Manchester"
+            samples_per_bit = 2
+        elif enc == 4:
+            levels = diff_manchester(bitstream)
+            scheme = "Differential Manchester"
+            samples_per_bit = 2
+        elif enc == 5:
+            levels = ami(bitstream)
+            scheme = "AMI"
+            samples_per_bit = 1
+        else:
+            print("Invalid choice.")
+            exit()
+
+        plot_waveform(bitstream, levels, f"{title} → {scheme}", samples_per_bit)
+
+    else:
+        print("Invalid choice.")
