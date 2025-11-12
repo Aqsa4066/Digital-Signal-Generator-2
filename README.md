@@ -1,0 +1,9 @@
+## DIGITAL SIGNAL GENERATOR
+
+# Problem Statement:
+Implement a digital signal generator: Line coding schemes to be implemented:
+
+NRZ-L, NRZ-I, Manchester, Differential Manchester, AMI and scrambling schemes: B8ZS, HDB3.
+Pulse code modulation (PCM) or Delta modulation (DM)
+
+Input: Ask user for digital signal generation i.e., whether user wants to give analog or digital input. Then, accordingly proceed with line encoding or PCM/DM. For encoding you need to provide user with various options (NRZ-L, NRZ-I, Manchester, Differential Manchester, AMI). If user asks for AMI, you need to pop a query whether scrambling is needed or not, if answer is yes next query would ask about the type of scrambling. For PCM/DM, take analog input and process it based on the chosen technique, then the digital data generated can be fed to one of line encoding techniques. Output: Digital data stream given, longest palindrome in that data stream, digital signal produced and in case of scrambling, scrambled signal produced.
